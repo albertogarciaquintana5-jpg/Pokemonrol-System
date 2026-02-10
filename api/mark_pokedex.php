@@ -2,6 +2,7 @@
 header('Content-Type: application/json');
 session_start();
 try { require_once __DIR__ . '/../db.php'; } catch (Exception $e) { http_response_code(500); echo json_encode(['error' => 'DB connection failed']); exit; }
+require_once __DIR__ . '/../helpers.php'; // Helper functions
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['error' => 'Method not allowed']); exit; }
 if (!isset($_SESSION['user']['id'])) { http_response_code(403); echo json_encode(['error' => 'Unauthorized']); exit; }
 $user_id = (int)$_SESSION['user']['id'];
@@ -26,6 +27,9 @@ if ($info_stmt) {
     $info_res = $info_stmt->get_result();
     $info = $info_res->fetch_assoc();
     $info_stmt->close();
+    
+    add_sprite_url($info, 'sprite', __DIR__ . '/../img/pokemon/');
+    
     echo json_encode(['success'=>true, 'message'=>'Pokedex actualizada', 'entry' => $info]);
     exit;
 }

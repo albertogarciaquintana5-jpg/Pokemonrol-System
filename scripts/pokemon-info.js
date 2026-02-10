@@ -50,11 +50,18 @@ async function showPokemonInfo(boxId) {
       return;
     }
 
+    // Debug: verificar datos de pokémon
+    console.log('Pokemon:', data.pokemon.nombre_especie, 'Sprite URL:', data.pokemon.sprite_url);
+
     currentPokemonData = data;
     renderPokemonInfoModal(data);
 
     // Mostrar modal
     const modalEl = document.getElementById('pokemonInfoModal');
+    
+    // Remover aria-hidden ANTES de mostrar el modal
+    modalEl.removeAttribute('aria-hidden');
+    
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
     // Animación de entrada para el contenido del modal
@@ -66,6 +73,7 @@ async function showPokemonInfo(boxId) {
     modalEl.addEventListener('hidden.bs.modal', function handler() {
       const content = modalEl.querySelector('.modal-content');
       if (content) content.classList.remove('modal-content-animate');
+      // No restaurar aria-hidden para evitar warnings
       modalEl.removeEventListener('hidden.bs.modal', handler);
     });
 
@@ -113,13 +121,15 @@ function renderPokemonInfoModal(data) {
   }
   
   // Construir HTML del modal
+  const nombreMostrar = pokemon.apodo || pokemon.nombre_especie || `Pokemon ID ${pokemon.id}`;
+  
   let html = `
     <div class="pokemon-info-header" style="margin: -1rem -1rem 1rem -1rem;">
       <h3 style="color:white; font-weight:700; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
-        ${escapeHtml(pokemon.apodo || pokemon.nombre_especie)}
+        ${escapeHtml(nombreMostrar)}
       </h3>
       <div class="pokemon-info-sprite">
-        ${pokemon.sprite ? `<img src="img/pokemon/${escapeHtml(pokemon.sprite)}" alt="${escapeHtml(pokemon.nombre_especie)}">` : '⚡'}
+        ${pokemon.sprite_url ? `<img src="img/pokemon/${escapeHtml(pokemon.sprite_url)}" alt="${escapeHtml(pokemon.nombre_especie)}" onerror="console.warn('Imagen no encontrada:', this.src); this.onerror=null; this.style.display='none'; this.nextElementSibling ? this.nextElementSibling.remove() : null; const fallback = document.createElement('div'); fallback.textContent = '⚡'; fallback.style.fontSize = '3rem'; this.parentElement.appendChild(fallback);">` : '<div style="font-size: 3rem;">⚡</div>'}
       </div>
       ${tiposHTML ? `
       <div class="pokemon-types-display">
@@ -129,7 +139,7 @@ function renderPokemonInfoModal(data) {
       <div class="pokemon-info-meta">
         <div class="pokemon-info-meta-item">
           <strong>Especie</strong>
-          ${escapeHtml(pokemon.nombre_especie)}
+          ${escapeHtml(pokemon.nombre_especie || 'Desconocida')}
         </div>
         <div class="pokemon-info-meta-item">
           <strong>Nivel</strong>

@@ -93,8 +93,7 @@ pokemon_species (ACTUALIZADA)
 pokemon_box (ACTUALIZADA)
 ├── ... columnas existentes ...
 ├── naturaleza_id (INT) - FK a naturalezas
-├── habilidad_id (INT) - FK a habilidades
-└── experiencia (INT)
+└── habilidad_id (INT) - FK a habilidades
 
 pokemon_movimiento (NUEVA)
 ├── pokemon_box_id (INT) - FK a pokemon_box
@@ -356,21 +355,16 @@ WHERE pm.pokemon_box_id = 1;
    - Aplicar tipo effectiveness
    - Reducir PP en cada uso
 
-2. **Experiencia y Niveles**
-   - Ganar EXP tras batalla
-   - Subir nivel automáticamente
-   - Aprender movimientos nuevos al subir nivel
-
-3. **IVs y EVs Individuales**
+2. **IVs y EVs Individuales**
    - Generar IVs aleatorios al capturar
    - EVs se ganan con cada victoria
 
-4. **Status Effects**
+3. **Status Effects**
    - Actualizar `status` en `pokemon_box`
    - Movimientos que aplican status
    - Items que curan status
 
-5. **Compatibilidad de Tipos**
+4. **Compatibilidad de Tipos**
    - Tabla `type_effectiveness`
    - Cálculo de daño con ventajas/desventajas
 

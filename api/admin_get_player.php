@@ -6,6 +6,7 @@ error_reporting(0);
 
 session_start();
 include '../db.php';
+include '../helpers.php'; // Helper functions
 ob_clean();
 
 // Verificar que sea el admin
@@ -51,6 +52,7 @@ if ($stmt = $mysqli->prepare($sql)) {
   $stmt->execute();
   $res = $stmt->get_result();
   while ($row = $res->fetch_assoc()) {
+    add_sprite_url($row, 'sprite', __DIR__ . '/../img/pokemon/');
     $response['team'][] = $row;
   }
   $stmt->close();
@@ -68,6 +70,7 @@ if ($stmt = $mysqli->prepare($sql)) {
   $stmt->execute();
   $res = $stmt->get_result();
   while ($row = $res->fetch_assoc()) {
+    add_sprite_url($row, 'sprite', __DIR__ . '/../img/pokemon/');
     $response['box'][] = $row;
   }
   $stmt->close();

@@ -253,14 +253,13 @@
 4. **Verifica que `pokemon_box` tiene las nuevas columnas:**
    ```sql
    DESCRIBE pokemon_box;
-   -- Debe incluir: naturaleza_id, habilidad_id, experiencia
+   -- Debe incluir: naturaleza_id, habilidad_id
    ```
 
 5. **Si faltan:**
    ```sql
    ALTER TABLE pokemon_box ADD COLUMN IF NOT EXISTS naturaleza_id INT;
    ALTER TABLE pokemon_box ADD COLUMN IF NOT EXISTS habilidad_id INT;
-   ALTER TABLE pokemon_box ADD COLUMN IF NOT EXISTS experiencia INT DEFAULT 0;
    ```
 
 ---
@@ -344,7 +343,7 @@ SELECT
 
 -- 3. Verifica columnas en pokemon_box
 DESCRIBE pokemon_box;
--- Debe incluir: naturaleza_id, habilidad_id, experiencia
+-- Debe incluir: naturaleza_id, habilidad_id
 
 -- 4. Verifica Pokémon con stats
 SELECT COUNT(*) FROM pokemon_species WHERE hp IS NOT NULL;

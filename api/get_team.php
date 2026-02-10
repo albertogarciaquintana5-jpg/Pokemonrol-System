@@ -2,6 +2,7 @@
 header('Content-Type: application/json');
 session_start();
 try { require_once __DIR__ . '/../db.php'; } catch (Exception $e) { http_response_code(500); echo json_encode(['error' => 'DB connection failed']); exit; }
+require_once __DIR__ . '/../helpers.php'; // Helper functions
 if (!isset($_SESSION['user']['id'])) { http_response_code(403); echo json_encode(['error' => 'Unauthorized']); exit; }
 $user_id = (int)$_SESSION['user']['id'];
 
@@ -27,7 +28,10 @@ $stmt->bind_param('i', $user_id);
 $stmt->execute();
 $res = $stmt->get_result();
 $team = [];
-while ($row = $res->fetch_assoc()) { $team[] = $row; }
+while ($row = $res->fetch_assoc()) { 
+  add_sprite_url($row, 'sprite', __DIR__ . '/../img/pokemon/');
+  $team[] = $row; 
+}
 $stmt->close();
 
 echo json_encode(['success' => true, 'team' => $team]);

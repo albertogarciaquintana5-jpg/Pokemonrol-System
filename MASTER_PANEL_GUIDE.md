@@ -30,7 +30,6 @@ Puedes modificar:
 - 📊 **Nivel**: Ajustar el nivel (1-100)
 - ❤️ **HP Actual**: Modificar los puntos de vida actuales
 - 💚 **HP Máximo**: Cambiar los HP máximos
-- ⭐ **Experiencia**: Dar o quitar experiencia
 - 🎯 **CP (Combat Power)**: Ajustar el poder de combate
 - 🔴 **Estado**: Cambiar estado del Pokémon:
   - Normal (sin estado)
@@ -171,9 +170,7 @@ Puedes modificar:
 
 4. **Estados**: Los estados afectan visualmente en el dashboard pero la lógica de combate debes implementarla tú
 
-5. **Experiencia**: Puedes usar esto para trackear progreso sin necesariamente cambiar el nivel
-
-6. **Backup**: Considera hacer backups periódicos de la base de datos antes de sesiones importantes
+5. **Backup**: Considera hacer backups periódicos de la base de datos antes de sesiones importantes
 
 ---
 

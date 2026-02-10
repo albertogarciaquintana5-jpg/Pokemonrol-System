@@ -211,17 +211,12 @@ Si quieres seguir mejorando:
    - Implementar cálculo de daño
    - Restar HP y PP en combate
 
-2. **Experiencia**
-   - Añadir columna `experiencia` a `pokemon_box` (ya existe)
-   - Subir nivel automáticamente
-   - Aprender movimientos nuevos al subir nivel
-
-3. **Status Effects**
+2. **Status Effects**
    - Parálisis, envenenamiento, sueño, etc.
    - Mostrar en la UI
    - Afectar stats en batalla
 
-4. **IVs y EVs**
+3. **IVs y EVs**
    - Generar IVs aleatorios al capturar (0-31)
    - EVs que se ganan tras batalla
    - Actualizar cálculo en `get_pokemon_info.php`

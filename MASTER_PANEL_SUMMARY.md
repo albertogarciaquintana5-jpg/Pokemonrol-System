@@ -38,7 +38,6 @@
 - [x] Cambiar nivel (1-100)
 - [x] Ajustar HP actual
 - [x] Cambiar HP máximo
-- [x] Dar/quitar experiencia
 - [x] Modificar CP (Combat Power)
 - [x] Cambiar estado (normal, envenenado, paralizado, quemado, congelado, dormido, debilitado)
 - [x] Ajustar PP de movimientos individuales

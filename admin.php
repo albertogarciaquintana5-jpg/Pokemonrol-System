@@ -17,6 +17,8 @@ if ($user_id !== 67) {
   header('Location: dashboard.php'); exit;
 }
 
+session_write_close();
+
 $user = htmlspecialchars(($userRaw['nombre'] ?? 'Master'));
 
 // Obtener lista de todos los usuarios
@@ -100,7 +102,6 @@ if ($stmt = $mysqli->prepare($sql)) {
     }
     .stat-hp { background-color: #ff5959; color: white; }
     .stat-level { background-color: #4CAF50; color: white; }
-    .stat-exp { background-color: #2196F3; color: white; }
     .pokemon-item {
       border: 1px solid #ddd;
       border-radius: 8px;
@@ -125,6 +126,46 @@ if ($stmt = $mysqli->prepare($sql)) {
       padding: 8px;
       margin: 4px 0;
       border-radius: 4px;
+    }
+    .species-autocomplete {
+      position: relative;
+    }
+    .species-results {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 300px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #ddd;
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      z-index: 1000;
+      display: none;
+    }
+    .species-results.active {
+      display: block;
+    }
+    .species-result-item {
+      padding: 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .species-result-item:hover {
+      background-color: #f8f9fa;
+    }
+    .species-result-item img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+    .species-result-item .species-name {
+      font-weight: 500;
     }
   </style>
 </head>
@@ -218,10 +259,6 @@ if ($stmt = $mysqli->prepare($sql)) {
               <label class="form-label">HP Máximo</label>
               <input type="number" class="form-control" id="edit-max-hp" min="1">
             </div>
-            <div class="col-md-4 mb-3">
-              <label class="form-label">Experiencia</label>
-              <input type="number" class="form-control" id="edit-exp" min="0">
-            </div>
           </div>
           <div class="row">
             <div class="col-md-6 mb-3">
@@ -268,11 +305,12 @@ if ($stmt = $mysqli->prepare($sql)) {
           </div>
           <div class="mb-3">
             <label class="form-label">Especie</label>
-            <select class="form-select" id="give-pokemon-species">
-              <?php foreach ($especies as $esp): ?>
-                <option value="<?= $esp['id'] ?>"><?= htmlspecialchars($esp['nombre']) ?></option>
-              <?php endforeach; ?>
-            </select>
+            <div class="species-autocomplete">
+              <input type="text" class="form-control" id="species-search-input" placeholder="Escribe el nombre del Pokémon..." autocomplete="off">
+              <input type="hidden" id="give-pokemon-species">
+              <div class="species-results" id="species-results"></div>
+            </div>
+            <small class="text-muted">Escribe al menos 2 caracteres para buscar</small>
           </div>
           <div class="mb-3">
             <label class="form-label">Apodo (opcional)</label>
@@ -369,16 +407,139 @@ if ($stmt = $mysqli->prepare($sql)) {
     </div>
   </div>
 
+  <!-- Modal: Evolucionar Pokémon -->
+  <div class="modal fade" id="evolutionModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Selecciona evolución</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="evolution-options" class="d-grid gap-2"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     let currentUserId = null;
     let currentPokemonData = {};
+    const evolutionCache = new Map();
     
     // Función para escapar HTML y prevenir XSS
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+    
+    // Sistema de búsqueda de especies
+    let searchTimeout = null;
+    let selectedSpeciesId = null;
+    
+    function setupSpeciesSearch() {
+      const searchInput = document.getElementById('species-search-input');
+      const resultsDiv = document.getElementById('species-results');
+      const hiddenInput = document.getElementById('give-pokemon-species');
+      
+      if (!searchInput || !resultsDiv || !hiddenInput) return;
+      
+      searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+          resultsDiv.classList.remove('active');
+          resultsDiv.innerHTML = '';
+          hiddenInput.value = '';
+          selectedSpeciesId = null;
+          return;
+        }
+        
+        // Debounce - esperar 300ms después de que el usuario deje de escribir
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          searchSpecies(query);
+        }, 300);
+      });
+      
+      // Cerrar resultados al hacer clic fuera
+      document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+          resultsDiv.classList.remove('active');
+        }
+      });
+    }
+    
+    function searchSpecies(query) {
+      const resultsDiv = document.getElementById('species-results');
+      
+      // Mostrar indicador de carga
+      resultsDiv.innerHTML = '<div class="species-result-item" style="cursor: default;"><span class="text-muted">🔍 Buscando...</span></div>';
+      resultsDiv.classList.add('active');
+      
+      fetch(`api/search_species.php?q=${encodeURIComponent(query)}`)
+        .then(r => {
+          if (!r.ok) console.warn('Response status:', r.status);
+          return r.json();
+        })
+        .then(data => {
+          // Verificar si hay error
+          if (data.error) {
+            console.error('Error del servidor:', data.error);
+            resultsDiv.innerHTML = `<div class="species-result-item" style="cursor: default;"><span class="text-danger">Error: ${escapeHtml(data.error)}</span></div>`;
+            resultsDiv.classList.add('active');
+            return;
+          }
+          
+          if (!Array.isArray(data) || data.length === 0) {
+            resultsDiv.innerHTML = '<div class="species-result-item" style="cursor: default;"><span class="text-muted">No se encontraron resultados</span></div>';
+            resultsDiv.classList.add('active');
+            return;
+          }
+          
+          let html = '';
+          data.forEach(species => {
+            // Usar sprite_url que viene del servidor (ya con el formato correcto)
+            let imgTag;
+            if (species.sprite_url) {
+              imgTag = `<img src="img/pokemon/${escapeHtml(species.sprite_url)}">`;
+            } else {
+              imgTag = '<span style="font-size: 1.5rem;">❔</span>';
+            }
+            
+            html += `
+              <div class="species-result-item" onclick="selectSpecies(${species.id}, '${escapeHtml(species.nombre)}')">
+                ${imgTag}
+                <span class="species-name">${escapeHtml(species.nombre)}</span>
+              </div>
+            `;
+          });
+          
+          resultsDiv.innerHTML = html;
+          resultsDiv.classList.add('active');
+        })
+        .catch(err => {
+          console.error('Error buscando especies:', err);
+          resultsDiv.innerHTML = '<div class="species-result-item" style="cursor: default;"><span class="text-danger">Error: ' + err.message + '</span></div>';
+          resultsDiv.classList.add('active');
+        });
+    }
+    
+    function selectSpecies(id, nombre) {
+      const searchInput = document.getElementById('species-search-input');
+      const resultsDiv = document.getElementById('species-results');
+      const hiddenInput = document.getElementById('give-pokemon-species');
+      
+      searchInput.value = nombre;
+      hiddenInput.value = id;
+      selectedSpeciesId = id;
+      resultsDiv.classList.remove('active');
+      resultsDiv.innerHTML = '';
     }
     
     // Verificar que Bootstrap se cargó correctamente
@@ -486,6 +647,8 @@ if ($stmt = $mysqli->prepare($sql)) {
       `;
       
       container.innerHTML = html;
+      evolutionCache.clear();
+      prepareEvolutionButtons([...(data.team || []), ...(data.box || [])]);
     }
 
     function displayPokemonList(pokemon, type) {
@@ -495,14 +658,15 @@ if ($stmt = $mysqli->prepare($sql)) {
 
       let html = '<div class="row">';
       pokemon.forEach(p => {
-        const img = p.sprite ? `img/pokemon/${escapeHtml(p.sprite)}.jpg` : '';
+        // Usar sprite_url que viene del servidor con el formato correcto
+        const img = p.sprite_url ? `img/pokemon/${escapeHtml(p.sprite_url)}` : '';
         const fallback = p.emoji || '❔';
-        const nombre = escapeHtml(p.apodo || p.especie);
+        const apodo = p.apodo ? escapeHtml(p.apodo) : '';
         const especie = escapeHtml(p.especie);
+        const nombre = apodo ? `${apodo} (${especie})` : especie;
         const hp = parseInt(p.hp) || 0;
         const maxHp = parseInt(p.max_hp) || 100;
         const nivel = parseInt(p.nivel) || 1;
-        const exp = parseInt(p.experiencia) || 0;
         const status = p.status || '';
         const statusText = status ? `<span class="badge bg-danger">${escapeHtml(status)}</span>` : '';
         
@@ -518,14 +682,13 @@ if ($stmt = $mysqli->prepare($sql)) {
             <div class="pokemon-item">
               <div class="d-flex align-items-center">
                 <div class="me-3">
-                  ${img ? `<img src="${img}" alt="${especie}" style="width: 50px; height: 50px; object-fit: contain;" onerror="this.outerHTML='<span style=font-size:2rem>${fallback}</span>'">` : `<span style="font-size: 2rem;">${fallback}</span>`}
+                  ${img ? `<img src="${img}" alt="${especie}" style="width: 50px; height: 50px; object-fit: contain;">` : `<span style="font-size: 2rem;">${fallback}</span>`}
                 </div>
                 <div class="flex-grow-1">
-                  <strong>${nombre}</strong> <small class="text-muted">(${especie})</small>
+                  <strong>${nombre}</strong>
                   <br>
                   <span class="stat-badge stat-level">Nv. ${nivel}</span>
                   <span class="stat-badge stat-hp">${hp}/${maxHp} HP</span>
-                  <span class="stat-badge stat-exp">${exp} EXP</span>
                   ${statusText}
                   <br>
                   <small class="text-muted">
@@ -539,6 +702,12 @@ if ($stmt = $mysqli->prepare($sql)) {
                   <button class="btn btn-sm btn-outline-success edit-btn" onclick="showTeachMoveModal(${parseInt(p.id)}, '${nombre}', ${nivel})" title="Enseñar movimiento">
                     <i class="bi bi-book"></i> Enseñar
                   </button>
+                  <button class="btn btn-sm btn-outline-danger edit-btn" onclick="deletePokemon(${parseInt(p.id)}, '${nombre.replace(/'/g, "\\'")}')" title="Borrar Pokémon">
+                    <i class="bi bi-trash"></i> Borrar
+                  </button>
+                  <button class="btn btn-sm btn-outline-warning edit-btn evolve-btn d-none" data-pokemon-id="${parseInt(p.id)}" data-loading="1" onclick="handleEvolveClick(${parseInt(p.id)})" title="Evolucionar" disabled>
+                    <i class="bi bi-arrow-up-right-circle"></i> Evolucionar
+                  </button>
                 </div>
               </div>
             </div>
@@ -547,6 +716,145 @@ if ($stmt = $mysqli->prepare($sql)) {
       });
       html += '</div>';
       return html;
+    }
+
+    function prepareEvolutionButtons(pokemonList) {
+      const ids = pokemonList
+        .map(p => parseInt(p.id))
+        .filter(id => Number.isInteger(id) && id > 0);
+
+      if (ids.length === 0) return;
+
+      ids.forEach(id => {
+        const buttons = document.querySelectorAll(`.evolve-btn[data-pokemon-id="${id}"]`);
+        buttons.forEach(btn => {
+          btn.disabled = true;
+          btn.dataset.loading = '1';
+        });
+      });
+
+      fetch('api/admin_get_evolution_options.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pokemon_ids: ids })
+      })
+      .then(r => r.json())
+      .then(response => {
+        if (!response.success) return;
+        const results = response.results || {};
+        ids.forEach(id => {
+          const options = Array.isArray(results[id]) ? results[id] : [];
+          const buttons = document.querySelectorAll(`.evolve-btn[data-pokemon-id="${id}"]`);
+          if (options.length > 0) {
+            evolutionCache.set(id, options);
+            buttons.forEach(btn => {
+              btn.classList.remove('d-none');
+              btn.disabled = false;
+              delete btn.dataset.loading;
+            });
+          } else {
+            buttons.forEach(btn => {
+              btn.classList.add('d-none');
+              btn.disabled = true;
+              delete btn.dataset.loading;
+            });
+          }
+        });
+      })
+      .catch(err => {
+        console.warn('Error al cargar evoluciones:', err);
+      });
+    }
+
+    function handleEvolveClick(pokemonId) {
+      pokemonId = parseInt(pokemonId);
+      if (!pokemonId || pokemonId <= 0) {
+        alert('ID de Pokémon inválido');
+        return;
+      }
+
+      if (evolutionCache.has(pokemonId)) {
+        openEvolutionOptions(pokemonId, evolutionCache.get(pokemonId));
+        return;
+      }
+
+      fetch('api/admin_get_evolution_options.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pokemon_id: pokemonId })
+      })
+      .then(r => r.json())
+      .then(response => {
+        if (!response.success) {
+          alert('Error: ' + (response.error || 'No se pudo obtener la evolución'));
+          return;
+        }
+        const options = response.options || [];
+        evolutionCache.set(pokemonId, options);
+        openEvolutionOptions(pokemonId, options);
+      })
+      .catch(err => {
+        console.error('Error al obtener evolución:', err);
+        alert('Error al obtener la evolución');
+      });
+    }
+
+    function openEvolutionOptions(pokemonId, options) {
+      if (!Array.isArray(options) || options.length === 0) {
+        alert('Este Pokémon no tiene evolución disponible en la base de datos');
+        return;
+      }
+
+      if (options.length === 1) {
+        confirmEvolution(pokemonId, options[0].id, options[0].nombre);
+        return;
+      }
+
+      const container = document.getElementById('evolution-options');
+      const html = options.map(option => {
+        const nombre = escapeHtml(option.nombre || 'Evolucion');
+        const sprite = option.sprite ? `img/pokemon/${escapeHtml(option.sprite)}` : '';
+        const img = sprite
+          ? `<img src="${sprite}" alt="${nombre}" style="width: 36px; height: 36px; object-fit: contain; margin-right: 8px;" onerror="this.style.display='none'">`
+          : '';
+        return `
+          <button class="btn btn-outline-primary d-flex align-items-center" onclick="confirmEvolution(${pokemonId}, ${parseInt(option.id)}, '${nombre.replace(/'/g, "\\'")}')">
+            ${img}
+            <span>${nombre}</span>
+          </button>
+        `;
+      }).join('');
+
+      container.innerHTML = html;
+      new bootstrap.Modal(document.getElementById('evolutionModal')).show();
+    }
+
+    function confirmEvolution(pokemonId, targetSpeciesId, targetName) {
+      const name = targetName ? ` a ${targetName}` : '';
+      if (!confirm(`¿Evolucionar este Pokémon${name}?`)) {
+        return;
+      }
+
+      fetch('api/admin_evolve_pokemon.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pokemon_id: pokemonId, target_species_id: targetSpeciesId })
+      })
+      .then(r => r.json())
+      .then(response => {
+        if (response.success) {
+          alert('Pokémon evolucionado correctamente');
+          const modalInstance = bootstrap.Modal.getInstance(document.getElementById('evolutionModal'));
+          if (modalInstance) modalInstance.hide();
+          if (currentUserId) loadPlayerData(currentUserId);
+        } else {
+          alert('Error: ' + (response.error || 'No se pudo evolucionar'));
+        }
+      })
+      .catch(err => {
+        console.error('Error al evolucionar:', err);
+        alert('Error al evolucionar el Pokémon');
+      });
     }
 
     function displayInventory(inventory) {
@@ -603,7 +911,6 @@ if ($stmt = $mysqli->prepare($sql)) {
             document.getElementById('edit-nivel').value = parseInt(data.pokemon.nivel) || 1;
             document.getElementById('edit-hp').value = parseInt(data.pokemon.hp) || 0;
             document.getElementById('edit-max-hp').value = parseInt(data.pokemon.max_hp) || 100;
-            document.getElementById('edit-exp').value = parseInt(data.pokemon.experiencia) || 0;
             document.getElementById('edit-status').value = data.pokemon.status || '';
 
             // Mostrar movimientos
@@ -654,7 +961,6 @@ if ($stmt = $mysqli->prepare($sql)) {
       const nivel = parseInt(document.getElementById('edit-nivel').value);
       const hp = parseInt(document.getElementById('edit-hp').value);
       const maxHp = parseInt(document.getElementById('edit-max-hp').value);
-      const exp = parseInt(document.getElementById('edit-exp').value);
       
       // Validaciones
       if (nivel < 1 || nivel > 100) {
@@ -672,10 +978,6 @@ if ($stmt = $mysqli->prepare($sql)) {
         return;
       }
       
-      if (exp < 0) {
-        alert('La experiencia no puede ser negativa');
-        return;
-      }
       
       const data = {
         pokemon_id: pokemonId,
@@ -683,7 +985,6 @@ if ($stmt = $mysqli->prepare($sql)) {
         nivel: nivel,
         hp: hp,
         max_hp: maxHp,
-        experiencia: exp,
         status: document.getElementById('edit-status').value
       };
 
@@ -717,6 +1018,38 @@ if ($stmt = $mysqli->prepare($sql)) {
         console.error('Error al actualizar:', err);
         alert('Error al actualizar el Pokémon');
       });
+
+    }
+
+    function deletePokemon(pokemonId, nombre) {
+      const id = parseInt(pokemonId);
+      if (!id || id <= 0) {
+        alert('ID de Pokémon inválido');
+        return;
+      }
+      const label = nombre ? ` (${nombre})` : '';
+      if (!confirm(`¿Borrar este Pokémon${label}? Esta acción no se puede deshacer.`)) {
+        return;
+      }
+
+      fetch('api/admin_delete_pokemon.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pokemon_id: id })
+      })
+      .then(r => r.json())
+      .then(response => {
+        if (response.success) {
+          alert('Pokémon borrado correctamente');
+          if (currentUserId) loadPlayerData(currentUserId);
+        } else {
+          alert('Error: ' + (response.error || 'No se pudo borrar el Pokémon'));
+        }
+      })
+      .catch(err => {
+        console.error('Error al borrar Pokémon:', err);
+        alert('Error al borrar el Pokémon');
+      });
     }
 
     function showGivePokemonModal() {
@@ -730,6 +1063,18 @@ if ($stmt = $mysqli->prepare($sql)) {
         } else {
           document.getElementById('give-pokemon-user').value = currentUserId;
         }
+        
+        // Limpiar campos de búsqueda de especies
+        const searchInput = document.getElementById('species-search-input');
+        const hiddenInput = document.getElementById('give-pokemon-species');
+        const resultsDiv = document.getElementById('species-results');
+        if (searchInput) searchInput.value = '';
+        if (hiddenInput) hiddenInput.value = '';
+        if (resultsDiv) {
+          resultsDiv.classList.remove('active');
+          resultsDiv.innerHTML = '';
+        }
+        selectedSpeciesId = null;
         
         const modalElement = document.getElementById('givePokemonModal');
         if (!modalElement) {
@@ -1088,6 +1433,12 @@ if ($stmt = $mysqli->prepare($sql)) {
         alert('Error al enseñar el movimiento');
       });
     }
+    
+    // Inicializar búsqueda de especies al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+      setupSpeciesSearch();
+      console.log('Sistema de búsqueda de especies inicializado');
+    });
   </script>
 </body>
 </html>

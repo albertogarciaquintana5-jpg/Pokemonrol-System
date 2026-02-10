@@ -1,5 +1,5 @@
 <?php
-// API: Actualizar datos de un Pokémon (HP, nivel, exp, status)
+// API: Actualizar datos de un Pokémon (HP, nivel, status)
 ob_start();
 header('Content-Type: application/json');
 error_reporting(0);
@@ -34,7 +34,6 @@ if ($apodo === '') {
 $nivel = isset($input['nivel']) ? (int)$input['nivel'] : null;
 $hp = isset($input['hp']) ? (int)$input['hp'] : null;
 $max_hp = isset($input['max_hp']) ? (int)$input['max_hp'] : null;
-$experiencia = isset($input['experiencia']) ? (int)$input['experiencia'] : null;
 $status = $input['status'] ?? '';
 // cp removido - la columna no existe en la tabla
 
@@ -54,10 +53,6 @@ if ($max_hp !== null && $max_hp < 1) {
   exit;
 }
 
-if ($experiencia !== null && $experiencia < 0) {
-  echo json_encode(['success' => false, 'error' => 'La experiencia no puede ser negativa']);
-  exit;
-}
 
 // Verificar si el nivel cambió para recalcular stats
 $nivel_cambiado = false;
@@ -87,12 +82,11 @@ if ($nivel_cambiado) {
     exit;
   }
   
-  // Actualizar solo apodo, experiencia y status (las stats ya se actualizaron)
-  $sql = "UPDATE pokemon_box SET apodo = ?, experiencia = ?, status = ? WHERE id = ?";
+  // Actualizar solo apodo y status (las stats ya se actualizaron)
+  $sql = "UPDATE pokemon_box SET apodo = ?, status = ? WHERE id = ?";
   if ($stmt = $mysqli->prepare($sql)) {
     $apodo_value = $apodo ?? '';
-    $exp_value = $experiencia ?? 0;
-    $stmt->bind_param('sisi', $apodo_value, $exp_value, $status, $pokemon_id);
+    $stmt->bind_param('ssi', $apodo_value, $status, $pokemon_id);
     if (!$stmt->execute()) {
       echo json_encode(['success' => false, 'error' => 'Error al actualizar Pokémon: ' . $stmt->error]);
       ob_end_flush();
@@ -109,21 +103,18 @@ if ($nivel_cambiado) {
   if ($nivel === null) $nivel = 1;
   if ($hp === null) $hp = 1;
   if ($max_hp === null) $max_hp = 100;
-  if ($experiencia === null) $experiencia = 0;
-
   $sql = "UPDATE pokemon_box SET 
           apodo = ?, 
           nivel = ?, 
           hp = ?, 
           max_hp = ?, 
-          experiencia = ?, 
           status = ?
           WHERE id = ?";
 
   if ($stmt = $mysqli->prepare($sql)) {
     // Bind con valores garantizados no-null
     $apodo_value = $apodo ?? '';
-    $stmt->bind_param('siiiisi', $apodo_value, $nivel, $hp, $max_hp, $experiencia, $status, $pokemon_id);
+    $stmt->bind_param('siiisi', $apodo_value, $nivel, $hp, $max_hp, $status, $pokemon_id);
     if (!$stmt->execute()) {
       echo json_encode(['success' => false, 'error' => 'Error al actualizar Pokémon: ' . $stmt->error]);
       ob_end_flush();

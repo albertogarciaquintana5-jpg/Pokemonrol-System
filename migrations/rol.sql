@@ -303,7 +303,6 @@ CREATE TABLE `pokemon_box` (
   `created_at` datetime DEFAULT current_timestamp(),
   `naturaleza_id` int(11) DEFAULT NULL,
   `habilidad_id` int(11) DEFAULT NULL,
-  `experiencia` int(11) DEFAULT 0,
   `ataque` int(11) DEFAULT 10,
   `defensa` int(11) DEFAULT 10,
   `sp_ataque` int(11) DEFAULT 10,
@@ -315,16 +314,16 @@ CREATE TABLE `pokemon_box` (
 -- Volcado de datos para la tabla `pokemon_box`
 --
 
-INSERT INTO `pokemon_box` (`id`, `user_id`, `species_id`, `apodo`, `nivel`, `hp`, `max_hp`, `status`, `created_at`, `naturaleza_id`, `habilidad_id`, `experiencia`, `ataque`, `defensa`, `sp_ataque`, `sp_defensa`, `velocidad`) VALUES
-(46, 11, 3, '', 100, 195, 195, '', '2026-02-04 21:28:29', NULL, NULL, 0, 130, 100, 120, 120, 200),
-(47, 10, 4, '', 50, 92, 92, '', '2026-02-04 21:28:45', NULL, NULL, 0, 32, 27, 117, 67, 102),
-(48, 11, 5, '', 100, 205, 205, '', '2026-02-04 22:59:28', NULL, NULL, 0, 90, 100, 120, 100, 90),
-(49, 68, 1, '', 6, 22, 22, '', '2026-02-04 23:03:52', NULL, NULL, 0, 11, 11, 13, 13, 11),
-(50, 68, 2, '', 9, NULL, 27, '', '2026-02-04 23:03:52', NULL, NULL, 0, 15, 14, 17, 15, 18),
-(51, 68, 3, '', 6, 21, 21, '', '2026-02-04 23:03:52', NULL, NULL, 0, 12, 10, 11, 11, 16),
-(52, 68, 4, NULL, 5, NULL, NULL, '', '2026-02-04 23:03:52', NULL, NULL, 0, 10, 10, 10, 10, 10),
-(53, 68, 5, NULL, 5, NULL, NULL, '', '2026-02-04 23:03:52', NULL, NULL, 0, 10, 10, 10, 10, 10),
-(54, 67, 3, NULL, 6, NULL, NULL, NULL, '2026-02-05 18:38:55', NULL, NULL, 0, 10, 10, 10, 10, 10);
+INSERT INTO `pokemon_box` (`id`, `user_id`, `species_id`, `apodo`, `nivel`, `hp`, `max_hp`, `status`, `created_at`, `naturaleza_id`, `habilidad_id`, `ataque`, `defensa`, `sp_ataque`, `sp_defensa`, `velocidad`) VALUES
+(46, 11, 3, '', 100, 195, 195, '', '2026-02-04 21:28:29', NULL, NULL, 130, 100, 120, 120, 200),
+(47, 10, 4, '', 50, 92, 92, '', '2026-02-04 21:28:45', NULL, NULL, 32, 27, 117, 67, 102),
+(48, 11, 5, '', 100, 205, 205, '', '2026-02-04 22:59:28', NULL, NULL, 90, 100, 120, 100, 90),
+(49, 68, 1, '', 6, 22, 22, '', '2026-02-04 23:03:52', NULL, NULL, 11, 11, 13, 13, 11),
+(50, 68, 2, '', 9, NULL, 27, '', '2026-02-04 23:03:52', NULL, NULL, 15, 14, 17, 15, 18),
+(51, 68, 3, '', 6, 21, 21, '', '2026-02-04 23:03:52', NULL, NULL, 12, 10, 11, 11, 16),
+(52, 68, 4, NULL, 5, NULL, NULL, '', '2026-02-04 23:03:52', NULL, NULL, 10, 10, 10, 10, 10),
+(53, 68, 5, NULL, 5, NULL, NULL, '', '2026-02-04 23:03:52', NULL, NULL, 10, 10, 10, 10, 10),
+(54, 67, 3, NULL, 6, NULL, NULL, NULL, '2026-02-05 18:38:55', NULL, NULL, 10, 10, 10, 10, 10);
 
 -- --------------------------------------------------------
 

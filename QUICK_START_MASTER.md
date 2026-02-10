@@ -80,7 +80,7 @@ VALUES (LAST_INSERT_ID(), 1, 'Pika Test', 5, 35, 35, 150, '');
 Panel → Seleccionar jugador → Tab "Equipo" o "Caja" → Botón "Editar"
 ```
 Puedes cambiar:
-- Nivel, HP, EXP, Estado, CP
+- Nivel, HP, Estado, CP
 
 ### Dar Pokémon
 ```

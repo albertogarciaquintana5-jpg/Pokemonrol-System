@@ -3,6 +3,7 @@ header('Content-Type: application/json; charset=utf-8');
 session_start();
 try {
     require_once __DIR__ . '/../db.php';
+    require_once __DIR__ . '/../helpers.php'; // Helper functions
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['error' => 'DB connection failed']);
@@ -40,7 +41,17 @@ $sql = "SELECT
             pb.hp,
             pb.max_hp,
             pb.status,
-            pb.experiencia,
+            pb.ataque,
+            pb.defensa,
+            pb.sp_ataque,
+            pb.sp_defensa,
+            pb.velocidad,
+            pb.iv_hp,
+            pb.iv_ataque,
+            pb.iv_defensa,
+            pb.iv_sp_ataque,
+            pb.iv_sp_defensa,
+            pb.iv_velocidad,
             ps.id AS species_id,
             ps.nombre AS nombre_especie,
             ps.sprite,
@@ -90,6 +101,9 @@ if (!$res || $res->num_rows === 0) {
 $pokemon = $res->fetch_assoc();
 $stmt->close();
 
+// Añadir sprite_url usando helper centralizado
+add_sprite_url($pokemon, 'sprite', __DIR__ . '/../img/pokemon/');
+
 // ============================================
 // CALCULAR STATS FINALES (con modificadores de naturaleza)
 // ============================================
@@ -134,16 +148,62 @@ if (!empty($pokemon['stat_reducido'])) {
     }
 }
 
-// Calcular stats (sin IVs/EVs por ahora, usar base=31, ev=0)
-$stats = [
-    // Usamos la fórmula de HP específica
-    'hp' => calcular_hp((int)$pokemon['base_hp'], $nivel),
-    'ataque' => floor(calcular_stat((int)$pokemon['base_ataque'], $nivel) * $mod_ataque),
-    'defensa' => floor(calcular_stat((int)$pokemon['base_defensa'], $nivel) * $mod_defensa),
-    'sp_ataque' => floor(calcular_stat((int)$pokemon['base_sp_ataque'], $nivel) * $mod_sp_ataque),
-    'sp_defensa' => floor(calcular_stat((int)$pokemon['base_sp_defensa'], $nivel) * $mod_sp_defensa),
-    'velocidad' => floor(calcular_stat((int)$pokemon['base_velocidad'], $nivel) * $mod_velocidad),
-];
+// ============================================
+// OBTENER STATS REALES DEL POKÉMON
+// ============================================
+// PRIORIDAD: 
+// 1. Usar stats almacenadas en la BD (valores reales del Pokémon)
+// 2. Si no existen, calcularlas usando IVs reales
+// 3. Si no hay IVs, usar IV=31 (perfecto) como fallback
+$stats = [];
+
+// HP: usar max_hp de la BD si existe, si no calcular
+if (!empty($pokemon['max_hp'])) {
+    $stats['hp'] = (int)$pokemon['max_hp'];
+} else {
+    $iv_hp = isset($pokemon['iv_hp']) ? (int)$pokemon['iv_hp'] : 31;
+    $stats['hp'] = calcular_hp((int)$pokemon['base_hp'], $nivel, $iv_hp);
+}
+
+// Ataque: usar ataque de BD si existe, si no calcular
+if (!empty($pokemon['ataque'])) {
+    $stats['ataque'] = (int)$pokemon['ataque'];
+} else {
+    $iv_ataque = isset($pokemon['iv_ataque']) ? (int)$pokemon['iv_ataque'] : 31;
+    $stats['ataque'] = floor(calcular_stat((int)$pokemon['base_ataque'], $nivel, $iv_ataque) * $mod_ataque);
+}
+
+// Defensa
+if (!empty($pokemon['defensa'])) {
+    $stats['defensa'] = (int)$pokemon['defensa'];
+} else {
+    $iv_defensa = isset($pokemon['iv_defensa']) ? (int)$pokemon['iv_defensa'] : 31;
+    $stats['defensa'] = floor(calcular_stat((int)$pokemon['base_defensa'], $nivel, $iv_defensa) * $mod_defensa);
+}
+
+// Sp. Ataque
+if (!empty($pokemon['sp_ataque'])) {
+    $stats['sp_ataque'] = (int)$pokemon['sp_ataque'];
+} else {
+    $iv_sp_ataque = isset($pokemon['iv_sp_ataque']) ? (int)$pokemon['iv_sp_ataque'] : 31;
+    $stats['sp_ataque'] = floor(calcular_stat((int)$pokemon['base_sp_ataque'], $nivel, $iv_sp_ataque) * $mod_sp_ataque);
+}
+
+// Sp. Defensa
+if (!empty($pokemon['sp_defensa'])) {
+    $stats['sp_defensa'] = (int)$pokemon['sp_defensa'];
+} else {
+    $iv_sp_defensa = isset($pokemon['iv_sp_defensa']) ? (int)$pokemon['iv_sp_defensa'] : 31;
+    $stats['sp_defensa'] = floor(calcular_stat((int)$pokemon['base_sp_defensa'], $nivel, $iv_sp_defensa) * $mod_sp_defensa);
+}
+
+// Velocidad
+if (!empty($pokemon['velocidad'])) {
+    $stats['velocidad'] = (int)$pokemon['velocidad'];
+} else {
+    $iv_velocidad = isset($pokemon['iv_velocidad']) ? (int)$pokemon['iv_velocidad'] : 31;
+    $stats['velocidad'] = floor(calcular_stat((int)$pokemon['base_velocidad'], $nivel, $iv_velocidad) * $mod_velocidad);
+}
 
 // ============================================
 // OBTENER MOVIMIENTOS
@@ -216,11 +276,11 @@ $response = [
         'nombre_especie' => $pokemon['nombre_especie'],
         'species_id' => (int)$pokemon['species_id'],
         'sprite' => $pokemon['sprite'],
+        'sprite_url' => $pokemon['sprite_url'],
         'nivel' => $nivel,
         'hp_actual' => (int)$pokemon['hp'],
         'hp_maximo' => (int)($pokemon['max_hp'] ?? $stats['hp']),
         'status' => $pokemon['status'],
-        'experiencia' => (int)$pokemon['experiencia'],
         'naturaleza' => $pokemon['naturaleza'] ?? 'Desconocida',
         'stat_aumentado' => $pokemon['stat_aumentado'],
         'stat_reducido' => $pokemon['stat_reducido'],

@@ -85,11 +85,10 @@ ALTER TABLE pokemon_species ADD COLUMN IF NOT EXISTS `sp_defensa` INT DEFAULT 65
 ALTER TABLE pokemon_species ADD COLUMN IF NOT EXISTS `velocidad` INT DEFAULT 45;
 
 -- =====================================================
--- ALTER pokemon_box: Add nature, ability, experience
+-- ALTER pokemon_box: Add nature, ability
 -- =====================================================
 ALTER TABLE pokemon_box ADD COLUMN IF NOT EXISTS `naturaleza_id` INT DEFAULT NULL;
 ALTER TABLE pokemon_box ADD COLUMN IF NOT EXISTS `habilidad_id` INT DEFAULT NULL;
-ALTER TABLE pokemon_box ADD COLUMN IF NOT EXISTS `experiencia` INT DEFAULT 0;
 
 -- Note: Foreign keys are created separately if needed
 -- If constraint already exists, this won't cause errors

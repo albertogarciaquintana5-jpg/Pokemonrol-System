@@ -195,8 +195,7 @@ pokemon_box (datos del Pokémon capturado)
 ├── apodo, nivel
 ├── hp, max_hp, status
 ├── naturaleza_id ← ¡NUEVO!
-├── habilidad_id ← ¡NUEVO!
-└── experiencia
+└── habilidad_id ← ¡NUEVO!
 
 pokemon_movimiento (relación N:M) ← ¡NUEVO!
 ├── pokemon_box_id
